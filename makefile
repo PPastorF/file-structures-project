@@ -1,2 +1,2 @@
 all:
-	gcc main.c manipulacaoArquivos.c -o trabalho1
+	gcc main.c manipulacaoArquivos2.c -g -o trabalho2
