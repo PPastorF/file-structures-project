@@ -2,138 +2,159 @@
 // Pedro Pastorello Fernandes - NUSP 10262502
 
 #include <stdio.h>
+
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include "manipulacaoArquivos2.h"
 #include "indice.h"
-#include "buffer.h"
+
+// Inicializa um novo buffer ou esvazia um existente 
+void inicializaFila(buffer* B) {
+	B->primeiro = 0;
+	B->ultimo = 0;
+	B->qtd = 0;
+}
 
 // Inicializa um buffer de paginas em memoria principal
-void inicializaBuffer(bufferPaginas* B, FILE* arquivoIndice, int rrnRaiz) {
+buffer* criaBuffer() {
+
+	// Aloca a memoria para o buffer
+	buffer* B = malloc( sizeof(buffer) );
+
+	// Inicializa o vetor de RRN das paginas armazenadas pelo buffer
+	int i;
+	for (i = 0; i < 5; i++) {
+		B->paginasArmazenadas[i] = -1;
+	}
+
+	// Inicializa a fila de paginas
+	inicializaFila(B);
+
+	// Inicializa os contadores de pagehit e pagefault
+	B->pageFault = 0;
+	B->pageHit   = 0;
+
+	return B;
+}
+
+// Esvazia e limpa a memoria ocupada por um buffer
+void limpaBuffer(buffer* B) {
 
 	inicializaFila(B);
+	free(B);
 
 }
 
-/* Funcao que percorre as paginas armazenadas no buffer por uma chave C.
- * Caso encontre, retorna o RRN referente a ela. Caso nao encontre,
- * retorna -1 */
-int encontraChaveBuffer(bufferPaginas* B, int C) {
+/* Funcao que retorna vedadeira se uma pagina de RRN rrnPag esta armazenada
+ * no buffer e salva seu indice */
+int paginaEstaNoBuffer(buffer* B, int rrnPag, int* indice) {
 
-	// Procura na pagina raiz
-	int rrn = encontraChavePagina(&(B->raiz), C);
-	if (rrn != -1)
-		return rrn;
-	else {
-		// Procura na fila de paginas
-		int i;
-		for (i = 0; i < TAMANHOVETOR; i++) {
-
-			rrn = encontraChavePagina(&(B->fila[i]), C);	
-			if (rrn != -1)
-				return rrn;
-		}
-		
-		return -1;
+	printf("\nRRN buscado: %d\n", rrnPag);
+	printf("RRNs no buffer: ");
+	int i;
+	for (i = 0; i < 5; i++) {
+		printf("%d, ", B->paginasArmazenadas[i]);
+		// Caso tenha encontrado
+		if (rrnPag == B->paginasArmazenadas[i]) {			
+			*indice = i;
+			return 1;	
+		}	
 	}
+
+	// Caso nao tenha encontrado
+	*indice = -1;
+	return 0;
+}
+
+// Funcao que atualiza a pagina raiz armazenada no buffer
+void novaRaizBuffer(buffer* B, paginaArvore* P, int rrnRaiz) {
+
+	B->paginasArmazenadas[4] = rrnRaiz;
+	B->raiz = *P;
 
 }
 
 // Funcao de insercao no buffer. Caso esteja cheio, remove como uma fila
-void insereBuffer(bufferPaginas* B, FILE* I, int RRN) {
+void insereBuffer(buffer* B, FILE* I, int rrnPag) {
 
-	// Le a pagina P referente ao RRN especificado do arquivo de indice
-	paginaArvore* P = lePagina(I, RRN);
+	paginaArvore* P;
 
-	// Le o RRN do no raiz, no cabecalho do arquivo de indice
-	int rrnRaiz = leRrnRaiz(I);
-
-	// Caso o RRN seja referente a pagina raiz, o insere na posicao especifica para a pagina raiz
-	if (RRN == rrnRaiz) {
-		copiaPagina(B->raiz, P);
+	// Encontra a posicao da pagina a ser lida
+	fseek(I, (rrnPag*TAMANHOREGISTROINDICE)+13, SEEK_SET);
+	
+	// Le a pagina do arquivo
+	fread( &(P->nChaves), 4, 1, I);
+	int i;
+	for (i = 0; i < ORDEMARVORE-1; i++) {
+		fread( &(P->filhas[i]), 4, 1, I);
+		fread( &(P->chaves[i].chave), 4, 1, I);
+		fread( &(P->chaves[i].RRN), 4, 1, I);
 	}
-	else {
-		// Insere a pagina P na fila do buffer
-		insereFila(B, P);
-	}
-}
+	fread( &(P->filhas[ORDEMARVORE-1]), 4, 1, I);
 
-// Inicializa um novo buffer ou esvazia um existente 
-void inicializaFila(bufferPaginas* B) {
-	B->primeiro = -1;
-	B->ultimo = -1;
-	B->qtd = 0;
+	// Insere a pagina P na fila e no vetor de RRNs salvos
+	int indiceInserido = insereFila(B, P);
+	B->paginasArmazenadas[indiceInserido] = rrnPag;
+
 }
 
 // Insere uma pagina no buffer,
-void insereFila(bufferPaginas* B, paginaArvore* P) {
+int insereFila(buffer* B, paginaArvore* P) {
 
-	// Caso a fila esteja cheia
-	if (B->qtd == TAMANHOVETOR) {
+	// Caso a fila esteja cheia, remove a ultima pagina
+	if (B->qtd == 4) {
 		retiraFila(B);
 	}
 
-	// Caso esteja vazia
-	if (B->primeiro == -1) {
-		B->primeiro = 0;
-		B->ultimo = 0;
-	}
+	// Realiza a insercao
+	B->qtd++;	
+	B->fila[B->ultimo] = *P;
+	int indiceInserido = B->ultimo;
 
 	// Caso a fila precise 'dar a volta' no vetor
-	if (B->ultimo == TAMANHOVETOR-1) {
+	if (B->ultimo == 3) {
 		B->ultimo = 0;
 	}
 	else {
 		B->ultimo++;
 	}
 
-	B->qtd++;
-	copiaPagina(&B->fila[B->ultimo], P);
-
+	return indiceInserido;
 }
 
-paginaArvore* retiraFila(bufferPaginas* B) {
-
-	paginaArvore* aux;
+// Retira uma pagina da fila de paginas do buffer
+void retiraFila(buffer* B) {
 
 	// Caso a fila esteja vazia
 	if (B->qtd == 0) {
-		return NULL;
+		return;
 	}
-	// Caso nao esteja vazia
-	else {
-		// Caso a fila tenha apenas 1 indice (deve ser esvaziada)
-		if (B->primeiro == B->ultimo) {
-			aux = &(B->fila[B->primeiro]);
-			inicializaFila(B);
-		}
-		else {
-			// Caso a fila precise 'dar a volta' no fila
-			if (B->primeiro == TAMANHOVETOR-1) {
-				aux = &(B->fila[B->primeiro]);
-				B->primeiro = 0;
-			}
-			else {
-				aux = &(B->fila[B->primeiro]);
-				B->primeiro++;
-			}
-		}
 
-		return aux;
-	}
+	// Caso nao esteja vazia:
+	B->qtd--;
+	
+	// Remove o RRN do vetor de paginas armazenadas
+	B->paginasArmazenadas[B->primeiro] = -1;
+
+	// Caso a fila precise 'dar a volta' no fila
+	if (B->primeiro == 3)
+		B->primeiro = 0;
+	else
+		B->primeiro++;
 
 }
 
-/* Funcao que imprime as informacoes sobre a execucao do programa, referentes
- * ao buffer-pool, no arquivo especificado */
-void appendBufferInfo(int pageFault, int pageHit) {
+// Funcao que imprime as informacoes sobre a execucao do programa, referentes
+// ao buffer-pool, no arquivo especificado
+void bufferLogOutput(buffer* B) {
 
-	// Abre o arquivo no modo append
-	FILE* arq = fopen("buffer-info.txt", "a");
+	// Abre o arquivo no modo append (ou o cria, caso necessario)
+	FILE* arq = fopen("buffer-info.txt", "a+");
 	
 	// Escreve as informacoes sobre a execucao do programa
-	fprintf(arq, "Page fault: %d; Page hit: %d.\n", pageFault, pageHit);
+	fprintf(arq, "Page fault: %d; Page hit: %d.\n", B->pageFault, B->pageHit);
 
 	fclose(arq);
 }

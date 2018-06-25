@@ -4,6 +4,8 @@
 #ifndef _MANIPULACAOARQUIVOS_H_
 #define _MANIPULACAOARQUIVOS_H_
 
+#include "indice.h"
+
 #define TAMANHO_REGISTRO 112
 
 typedef unsigned char byte;
@@ -40,9 +42,9 @@ typedef struct registrov {
 
 // Etc
 registro*	registroEntrada(char**);
-void		checkParametros(int, int);
 char*		leString(FILE*);
 char*		maiusculoStr(char*);
+void		checkParametros(int, int);
 void 		copiaRegistro(registro*, registro*);
 void 		printaRegistro(registro*);
 void  		limpaRegistro(registro*);
@@ -50,24 +52,24 @@ void 		appendRegistroV(registroV*, registro*);
 void		fechaArquivo(FILE*);
 
 // Manipulacao de arquivo .csv
+registro*	leRegistroCsv(FILE*);
 void		leTamanhoVariavelCsv(FILE*, campoString*);
 void		leTamanhoFixoCsv(FILE*, char*);
-registro*	leRegistroCsv(FILE*);
 void  		leArquivoCsv(FILE*, registroV*);
 
 
 // Manipulacaoo do arquivo de dados (arquivo binario)
+registro*	leRegistroBin(FILE*);
 void		printaRegistro(registro*);
 void  		escreveRegistro(FILE*, registro*);
-void  		escreveArquivo(FILE*, registroV*, char*);
-registro*	leRegistroBin(FILE*);
+void  		escreveArquivo(FILE*, registroV*, char*, FILE*, buffer*);
 void		leArquivoBin(FILE*, registroV*);
 void		buscaRegistro(FILE*, int, char*);
 void		removeRegistro(FILE*, char*);
-void		insercaoDinamica(FILE*, registro*);
-int			numeroRegistros(FILE*, int);
-int			proxChar(FILE*);
+void		insercaoDinamica(FILE*, registro*, FILE*, buffer*);
 void		leTamanhoFixoBin(FILE*, char*);
 void		leTamanhoVariavelBin(FILE*, campoString*);
+int			numeroRegistros(FILE*, int);
+int			proxChar(FILE*);
 
 #endif

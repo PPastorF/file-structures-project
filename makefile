@@ -1,2 +1,2 @@
 all:
-	gcc main.c manipulacaoArquivos2.c -g -o trabalho2
+	gcc -std=c99 -Wall main.c manipulacaoArquivos2.c indice.c buffer.c -g -o trabalho2

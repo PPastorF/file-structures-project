@@ -7,17 +7,15 @@
 #include <ctype.h>
 #include "manipulacaoArquivos2.h"
 #include "indice.h"
-#include "buffer.h"
 
 int main(int argc, char* argv[]) {
 
     // Referencias
     FILE* fileDados;
     FILE* fileOut;
+    FILE* fileIndex;
     registro* reg;
-
-    // Definicao de uma string nula, de tamanho 10 para ser utilizada futuramente nos campos de tamanho fixo
-    char nada[11] = {'0','0','0','0','0','0','0','0','0','0','\0'};
+    buffer* bufferPaginas;
 
     if(argc <= 1) {
         printf("ERRO: Parametros ausentes!\n");
@@ -46,11 +44,23 @@ int main(int argc, char* argv[]) {
 
             // Le os registros do arquivo e armazena-os no vetor de dados. Depois, fecha-o
             leArquivoCsv(fileIn, dadosIn);
-            
             fclose(fileIn);
 
+            // Cria o arquivo de indices para o arquivo de dados
+            fileIndex = criaArquivoIndice();
+
+            /* Cria o buffer de paginas que sera utilizado pelas funcoes que
+             * trabalham com o arquivo de indices */
+            bufferPaginas = criaBuffer();
+
             // Escreve os registros do vetor de dados no arquivo de saida
-            escreveArquivo(fileOut, dadosIn, "fileOut");   
+            escreveArquivo(fileOut, dadosIn, "fileOut", fileIndex, bufferPaginas);
+
+            // Escreve as informacoes referentes ao buffer nessa execucao do programa
+            bufferLogOutput(bufferPaginas);
+
+            // Limpa o buffer de paginas
+            limpaBuffer(bufferPaginas); 
 
             printf("Arquivo carregado.\n");
 
@@ -136,7 +146,19 @@ int main(int argc, char* argv[]) {
             // Registro auxiliar com as informações entradas
             reg = registroEntrada(argv);
 
-            insercaoDinamica(fileDados, reg);
+            /* Cria o buffer de paginas que sera utilizado pelas funcoes que
+             * trabalham com o arquivo de indices */
+            bufferPaginas = criaBuffer();
+
+            /* Insere dinamicamente o registro no arquivo de dados e seu elemento correspondente
+             * no arquivo de indices */
+            insercaoDinamica(fileDados, reg, fileIndex, bufferPaginas);
+
+            // Escreve as informacoes referentes ao buffer nessa execucao do programa
+            bufferLogOutput(bufferPaginas);
+
+            // Limpa o buffer de paginas
+            limpaBuffer(bufferPaginas); 
 
             printf("Registro alterado com sucesso.\n");
             break;
@@ -209,9 +231,13 @@ int main(int argc, char* argv[]) {
 
             // Cria um arquivo de dados temporario
             FILE* tempFile;
+            
+            /* Cria o buffer de paginas que sera utilizado pelas funcoes que
+             * trabalham com o arquivo de indices */
+            bufferPaginas = criaBuffer();
 
             // Escreve os dados no novo arquivo
-            escreveArquivo(tempFile, dadosBin, "tempData");
+            escreveArquivo(tempFile, dadosBin, "tempData", fileIndex, bufferPaginas);
 
             // Remove o antigo arquivo de dados
             if (remove("fileOut") == -1 ) {
@@ -225,6 +251,12 @@ int main(int argc, char* argv[]) {
                 exit(1);
             }
             
+            // Escreve as informacoes referentes ao buffer nessa execucao do programa
+            bufferLogOutput(bufferPaginas);
+
+            // Limpa o buffer de paginas
+            limpaBuffer(bufferPaginas); 
+
             printf("Arquivo de dados compactado com sucesso.\n");
     		break;
 

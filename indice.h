@@ -22,39 +22,76 @@ typedef struct registroindice {
 // Representacao de ma pagina de Arvore B em memoria principal
 typedef struct paginaarvore {
 
-	int 			nChaves; 				  // Numero n de chaves da pagina
-	registroIndice  registros[ORDEMARVORE-1]; // Vetor com as chaves armazenadas pela pagina
-	int				filhas[ORDEMARVORE];	  // Vetor com os RRNs das paginas filhas (implementacao em memoria secundaria)
+	int 			nChaves; 				  	// Numero n de chaves da pagina
+	registroIndice  chaves[ORDEMARVORE-1]; 	 	// Vetor com as chaves armazenadas pela pagina
+	int				filhas[ORDEMARVORE];	 	// Vetor com os RRNs das paginas filhas (implementacao em memoria secundaria)
 
 } paginaArvore;
 
-
-// Representacao de uma Arvore B em memoria principal
-typedef struct arvoreb {
-	
-	paginaArvore* raiz;
-	int	altura;
-
-} arvoreB;
-
-
 // Metodos:
 
-// TAD Indice/Arvore B
-FILE*			criaIndice();	// Funcao de criacao de um arquivo de indices
-int				buscaIndice(FILE*, char*);	// Funcao que retorna o RRN correspondente a uma chave, no arquivo de indices
-void			insereChave(FILE*);	// Funcao de insercao de um registro em um arquivo de indice
-void			removeChave(FILE*);	// Funcao de remocao de um registro em um arquivo de indice
-void			atualizaIndice(FILE*, FILE*);	// Funcao que atualiza os registros de um arquivo de indices, baseado em um arquivo de dados
-void			destroiIndice(FILE*);	// Funcao de destruicao de um arquivo de indices
-FILE*			carregaIndice(char*); // Funao de carregamento de um arquivo de indices para memoria principal
-void			reescreveIndice(FILE*, indiceRAM);
-int 			encontraChavePagina(paginaArvore* P, int);
 
-// Metodos Auxiliares
+/* Definicoes de um buffer de paginas da Arvore B
+ *
+ * O buffer funciona como uma fila, de acordo com a politica de organizacao FIFO.
+ * Esta fila esta organizada em um vetor estatico e a mesma rotaciona por seus indices,
+ * para economizar espaco de memoria e nao necessitar de realocacao de seus valores.
+ */
+
+typedef struct bufferpaginas {
+
+	/* Vetor com os RRNs das paginas armazenadas no buffer.
+	 * As posicoes de 1 a 4 se referem a fila, enquanto a posicao
+	 * 5 e especial e reservada para o RRN da pagina raiz */
+	int paginasArmazenadas[5];
+	
+	// Localizacao especial para a pagina raiz
+	paginaArvore raiz;
+
+	// Fila de paginas armazenadas no buffer
+	paginaArvore fila[4];
+	int primeiro;
+	int ultimo;
+	int qtd;
+
+	int pageFault;
+	int pageHit;
+
+} buffer;
+
+// Metodos
+
+// Indice:
+int 			getMae(FILE*, buffer*, int, int, paginaArvore*);
+void 			criaArquivoIndice(FILE*);
+int				numeroRegistrosIndice(FILE*);
+void 			escrevePagina(FILE*, paginaArvore*, int);
+void 			esvaziaPagina(paginaArvore*);
+int 			posicaoInsercao(FILE*, buffer*, int, int);
+void 			inserePaginaNaoCheia(FILE*, buffer*, int, registroIndice, int);
+void 			split(FILE*, buffer*, int, registroIndice, int);
+void 			insereChavePagina(FILE*, buffer*, int, registroIndice);
+void			insereChaveIndice(FILE*, buffer*, int, int);
+int 			encontraChavePagina(paginaArvore*, int);
+int 			leCabecalhoArquivoIndice(FILE*, char*);
+void			escreveCabecalhoArquivoIndice(FILE*, char*, int);
+FILE* 			abreArquivoIndice();
 void 			fechaArquivoIndice(FILE*);
-int 			leRrnRaiz(FILE*);
-paginaArvore*	lePagina(FILE*, int);
-void			copiaPagina(paginaArvore*, paginaArvore*); // Funcao auxiliar que copia os conteudos de uma pagina para outra
+paginaArvore* 	lePagina(FILE*, buffer*, int);
+void 			copiaPagina(paginaArvore*, paginaArvore*);
+int 			paginaCheia(paginaArvore*);
+int 			paginaFolha(paginaArvore*);
+
+
+// Buffer:
+void 	inicializaFila(buffer*);
+buffer*	criaBuffer();
+void 	limpaBuffer(buffer*);
+int 	paginaEstaNoBuffer(buffer*, int, int*);
+void 	novaRaizBuffer(buffer*, paginaArvore*, int);
+void 	insereBuffer(buffer*, FILE*, int);
+int 	insereFila(buffer*, paginaArvore*);
+void 	retiraFila(buffer*);
+void 	bufferLogOutput(buffer*);
 
 #endif

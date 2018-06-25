@@ -6,7 +6,6 @@
 #include <string.h>
 #include <ctype.h>
 #include "indice.h"
-#include "buffer.h"
 #include "manipulacaoArquivos2.h"
 
 /* Etc: */
@@ -144,32 +143,35 @@ void copiaRegistro(registro* dest, registro* src) {
 
 }
 
+// Funcao de impressao formatada de um registro
 void printaRegistro(registro* R) {
 
-	printf("%d ", R->codEscola);
-	printf(" ");                
-	if (R->dataInicio == "0000000000")
-	    printf("           ");
-	else
-	    printf("%s ", R->dataInicio);
-	printf(" ");
-	if (R->dataFinal == "0000000000")
-	    printf("           ");
-	else
-	    printf("%s ", R->dataFinal);
-	printf(" ");
-	printf("%.2d ", R->nomeEscola.tamanho);
-	if (R->nomeEscola.tamanho)
-		printf("%s ", R->nomeEscola.valor);
+	if (R != NULL) {
+		printf("%d ", R->codEscola);
+		printf(" ");                
+		if (R->dataInicio == "0000000000")
+		    printf("           ");
+		else
+		    printf("%s ", R->dataInicio);
+		printf(" ");
+		if (R->dataFinal == "0000000000")
+		    printf("           ");
+		else
+		    printf("%s ", R->dataFinal);
+		printf(" ");
+		printf("%.2d ", R->nomeEscola.tamanho);
+		if (R->nomeEscola.tamanho)
+			printf("%s ", R->nomeEscola.valor);
 
-	printf("%.2d ", R->municipio.tamanho);
-	if (R->municipio.tamanho)
-		printf("%s ", R->municipio.valor);
-	
-	printf("%.2d ", R->endereco.tamanho);
-	if (R->endereco.tamanho)
-		printf("%s " , R->endereco.valor);
-	printf("\n");
+		printf("%.2d ", R->municipio.tamanho);
+		if (R->municipio.tamanho)
+			printf("%s ", R->municipio.valor);
+		
+		printf("%.2d ", R->endereco.tamanho);
+		if (R->endereco.tamanho)
+			printf("%s " , R->endereco.valor);
+		printf("\n");
+	}
 }
 
 // Libera a memoria dinamica ocupada por um registro
@@ -231,6 +233,7 @@ void leTamanhoVariavelCsv(FILE* F, campoString* C) {
 
 }
 
+// Le um campo de tamanho fixo do arquivo .csv
 void leTamanhoFixoCsv(FILE* F, char* C) {
 
 	// Variavel 'lixo', para os caracteres ";"
@@ -256,6 +259,7 @@ void leTamanhoFixoCsv(FILE* F, char* C) {
 
 }
 
+// Le um registro de um arquivo .csv
 registro* leRegistroCsv(FILE* F) {
 
 	// Variavel auxiliar
@@ -289,6 +293,7 @@ registro* leRegistroCsv(FILE* F) {
 	return aux;
 }
 
+// Le um arquivo .csv
 void leArquivoCsv(FILE* F, registroV* R) {
 
 	// Aloca o vetor de registros que sera utilizado para armazena-los
@@ -312,6 +317,7 @@ void leArquivoCsv(FILE* F, registroV* R) {
 
 /* Manipulacaoo do arquivo de dados (arquivo binario) */
 
+// Escreve um registro no arquivo de dados
 void escreveRegistro(FILE* F, registro* R) {
 
 	// codEscola (4 bytes)
@@ -394,7 +400,8 @@ void escreveRegistro(FILE* F, registro* R) {
 
 }
 
-void escreveArquivo(FILE* F, registroV* R, char* nomeArquivo) {
+// Escreve o arquivo de dados (binario)
+void escreveArquivo(FILE* F, registroV* R, char* nomeArquivo, FILE* I, buffer* B) {
 
     // Criacao do arquivo de saida
     F = fopen(nomeArquivo, "wb");
@@ -410,11 +417,21 @@ void escreveArquivo(FILE* F, registroV* R, char* nomeArquivo) {
 	int topoPilha = -1;
 	fwrite(&topoPilha, sizeof(int), 1, F);
 
+	// Abre o arquivo de indices
+	I = abreArquivoIndice();
+
 	// Escreve o corpo do arquivo
 	int i;
-	for (i = 0; i < R->tam; i++)
+	for (i = 0; i < R->tam; i++) {
+
+		// Escreve um registro no arquivo de dado 
 		escreveRegistro(F, &(R->vet[i]));
 
+		// Insere o elemento correspondente ao registro no arquivo de indice
+		insereChaveIndice(I, B, R->vet[i].codEscola, i);
+	}
+
+	fechaArquivoIndice(I);
 	fechaArquivo(F);
 }
 
@@ -525,6 +542,7 @@ registro* leRegistroBin(FILE* F) {
 	}
 }   
 
+// Le o arquivo de dados (binario)
 void leArquivoBin(FILE* F, registroV* R) {
 	
 	// Aloca o vetor de registros que sera utilizado para armazena-los
@@ -558,12 +576,13 @@ int	numeroRegistros(FILE* F, int RRN) {
 	fseek(F, 0L, SEEK_END);
 	int tamanhoArquivo = ftell(F);
 	int qtdRegistros = ( (tamanhoArquivo-5) / TAMANHO_REGISTRO );
-	fseek(F, ( (RRN-1)*(TAMANHO_REGISTRO) )+ 5, SEEK_SET );
+	fseek(F, ( (RRN)*(TAMANHO_REGISTRO) )+ 5, SEEK_SET );
 
 	return qtdRegistros;
 
 }
 
+// Funcao de busca e impressao de registros
 void buscaRegistro(FILE* fileDados, int op, char* arg) {
 
 	/* Passa por todos os registros de um arquivo de dados (acessando-o cada vez) e o printa caso encontre um correspondente a busca 
@@ -606,7 +625,7 @@ void buscaRegistro(FILE* fileDados, int op, char* arg) {
 			    	continue;
 			    }
 
-			    // Le um registro do arquivo
+			    // Le um registro do arquivo"file
 			    reg = leRegistroBin(fileDados);
 			    
 			    // Printa o registro
@@ -917,6 +936,7 @@ void buscaRegistro(FILE* fileDados, int op, char* arg) {
 
 }
 
+// Remove um registro do arquivo de dados
 void removeRegistro(FILE* F, char* argRrn) {
 
 	// Abre o arquivo de dados
@@ -967,7 +987,9 @@ void removeRegistro(FILE* F, char* argRrn) {
 
 }
 
-void insercaoDinamica(FILE* F, registro* R) {
+/* Insere um registro no arquivo de dados, de acordo com o reaproveitamento
+ * dinamico de espaco de armazenamento */
+void insercaoDinamica(FILE* F, registro* R, FILE* I, buffer* B) {
 
 	// Abre o arquivo de dados
 	byte status = 0;
@@ -984,19 +1006,29 @@ void insercaoDinamica(FILE* F, registro* R) {
 		fwrite(&status , 1, 1, F);
     }
 
-    // Le topo da pilha do cabecalho
+    // Abre o arquivo de indices
+	I = abreArquivoIndice();
+
+    // Le topo da pilha do cabecalho do arquivo de indices
     int topoPilha;
     fseek(F, 1, SEEK_SET);
     fread(&topoPilha, sizeof(int), 1, F);
 
+    // RRN de insercao do registro no arquivo de dados
+    int rrn;
+
     // Caso a pilha esteja vazia, escreve o registro no final do arquivo
     if (topoPilha == -1) {
+    	rrn = numeroRegistros(F, 0) - 1;
     	fseek(F, 0, SEEK_END);
     	escreveRegistro(F, R);
+
+	    // Insere a chave correspondente no arquivo de indices
+	    insereChaveIndice(I, B, R->codEscola, rrn);
     }
     else {	// Caso a pilha nao esteja vazia:
    		
-    	int rrn = topoPilha;
+    	rrn = topoPilha;
 
     	// Le o proximo topoPilha, do RRN correto
     	fseek(F, ( (rrn)*TAMANHO_REGISTRO )+6, SEEK_SET);
@@ -1009,7 +1041,12 @@ void insercaoDinamica(FILE* F, registro* R) {
     	// Escreve o novo registro no RRN lido do topo da pilha
 		fseek(F, ( (rrn)*TAMANHO_REGISTRO )+5, SEEK_SET);
 		escreveRegistro(F, R);
+
+	    // Insere a chave correspondente no arquivo de indices
+	    insereChaveIndice(I, B, R->codEscola, rrn);
     }
 
+    // Fecha ambos os arquivos
 	fechaArquivo(F);
+	fechaArquivoIndice(I);
 }
