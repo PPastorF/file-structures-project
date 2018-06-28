@@ -64,7 +64,7 @@ typedef struct bufferpaginas {
 // Indice:
 int 			getMae(FILE*, buffer*, int, int, paginaArvore*);
 void 			criaArquivoIndice(char*);
-int				numeroRegistrosIndice(FILE*);
+int			numeroRegistrosIndice(FILE*);
 void 			escrevePagina(FILE*, paginaArvore*, int);
 void 			esvaziaPagina(paginaArvore*);
 int 			posicaoInsercao(FILE*, buffer*, paginaArvore*, int);
@@ -77,7 +77,7 @@ int 			leCabecalhoArquivoIndice(FILE*, char*);
 void			escreveCabecalhoArquivoIndice(FILE*, char*, int);
 FILE* 			abreArquivoIndice();
 void 			fechaArquivoIndice(FILE*);
-paginaArvore* 	lePagina(FILE*, buffer*, int);
+paginaArvore* 		lePagina(FILE*, buffer*, int);
 void 			copiaPagina(paginaArvore*, paginaArvore*);
 int 			paginaCheia(paginaArvore*);
 int 			paginaFolha(paginaArvore*);
