@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include "manipulacaoArquivos2.h"
+#include "manipulacaoArquivos.h"
 #include "indice.h"
 
 // Inicializa um novo buffer ou esvazia um existente 
