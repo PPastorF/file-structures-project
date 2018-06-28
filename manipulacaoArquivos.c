@@ -6,7 +6,7 @@
 #include <string.h>
 #include <ctype.h>
 #include "indice.h"
-#include "manipulacaoArquivos2.h"
+#include "manipulacaoArquivos.h"
 
 /* Etc: */
 
