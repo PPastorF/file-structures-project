@@ -12,17 +12,15 @@ int main(int argc, char* argv[]) {
 
     // Referencias
     FILE* fileDados;
-    FILE* fileOut;
-    FILE* fileIndex;
     registro* reg;
     buffer* bufferPaginas;
 
-    if(argc <= 1) {
+    if (argc <= 1) {
         printf("ERRO: Parametros ausentes!\n");
         exit(1);
     }
 
-    switch( atoi(argv[1]) ) {
+    switch ( atoi(argv[1]) ) {
 
         case 1: // Leitura de registros ( ./programa 1 'arquivo.csv' )
 
@@ -46,24 +44,21 @@ int main(int argc, char* argv[]) {
             leArquivoCsv(fileIn, dadosIn);
             fclose(fileIn);
 
-            // Cria o arquivo de indices para o arquivo de dados
-            fileIndex = criaArquivoIndice();
-
             /* Cria o buffer de paginas que sera utilizado pelas funcoes que
              * trabalham com o arquivo de indices */
             bufferPaginas = criaBuffer();
 
+            // Cria o arquivo de indices para o arquivo de dados
+            criaArquivoIndice("fileIndex");
+
             // Escreve os registros do vetor de dados no arquivo de saida
-            escreveArquivo(fileOut, dadosIn, "fileOut", fileIndex, bufferPaginas);
+            escreveArquivo(dadosIn, "fileOut", bufferPaginas);
 
-            // Escreve as informacoes referentes ao buffer nessa execucao do programa
+
+            // Finalizacao da execucao
             bufferLogOutput(bufferPaginas);
-
-            // Limpa o buffer de paginas
             limpaBuffer(bufferPaginas); 
-
             printf("Arquivo carregado.\n");
-
             break;
 
         case 2: // Recuperacao de dados ( ./programaTrab1 2 )
@@ -71,7 +66,7 @@ int main(int argc, char* argv[]) {
             // Checa se o numero de parametros esta de acordo com o esperado
             checkParametros(argc, 2);
 
-            buscaRegistro(fileDados, 0, "");
+            buscaRegistro(0, "");
 
             break;
 
@@ -86,32 +81,32 @@ int main(int argc, char* argv[]) {
             argBusca[26] = '\0';
 
             if(strcmp(argv[2], "codEscola") == 0) {
-                buscaRegistro(fileDados, 1, argBusca);
+                buscaRegistro(1, argBusca);
                 break;
             }
 
             if(strcmp(argv[2], "dataInicio") == 0) {
-                buscaRegistro(fileDados, 2, argBusca);
+                buscaRegistro(2, argBusca);
                 break;                
             }
 
             if(strcmp(argv[2], "dataFinal") == 0) {
-                buscaRegistro(fileDados, 3, argBusca);
+                buscaRegistro(3, argBusca);
                 break;                
             }
 
             if(strcmp(argv[2], "nomeEscola") == 0) {
-                buscaRegistro(fileDados, 4, argBusca);
+                buscaRegistro(4, argBusca);
                 break;
             }
 
             if(strcmp(argv[2], "municipio") == 0) {
-                buscaRegistro(fileDados, 5, argBusca);
+                buscaRegistro(5, argBusca);
                 break;
             }
             
             if(strcmp(argv[2], "endereco") == 0) {
-                buscaRegistro(fileDados, 6, argBusca);
+                buscaRegistro(6, argBusca);
                 break;                
             }
 
@@ -125,7 +120,7 @@ int main(int argc, char* argv[]) {
             // Checa se o numero de parametros esta de acordo com o esperado
             checkParametros(argc, 3);
 
-            buscaRegistro(fileDados, 7, argv[2]);
+            buscaRegistro(7, argv[2]);
 
             break;
 
@@ -134,7 +129,7 @@ int main(int argc, char* argv[]) {
             // Checa se o numero de parametros esta de acordo com o esperado
             checkParametros(argc, 3);
 
-            removeRegistro(fileDados, argv[2]);
+            removeRegistro(argv[2]);
             
             break;
 
@@ -152,18 +147,21 @@ int main(int argc, char* argv[]) {
 
             /* Insere dinamicamente o registro no arquivo de dados e seu elemento correspondente
              * no arquivo de indices */
-            insercaoDinamica(fileDados, reg, fileIndex, bufferPaginas);
+            insercaoDinamica(reg, bufferPaginas);
 
-            // Escreve as informacoes referentes ao buffer nessa execucao do programa
+            // Finalizacao da execucao
             bufferLogOutput(bufferPaginas);
-
-            // Limpa o buffer de paginas
             limpaBuffer(bufferPaginas); 
-
             printf("Registro alterado com sucesso.\n");
             break;
 
         case 7: // Atualizacao de registro por RRN ( ./programaTrab1 7 RRN valorCampo1 valorCampo2 valorCampo3 valorCampo4 valorCampo5 valorCampo6 )
+    
+            fileDados = fopen("fileDados","rb+");
+            if (fileDados == NULL) {
+                printf("ERRO: Arquivo de dados nao encontrado.\n");
+                exit(0);
+            }
 
             // Checa se o numero de parametros esta de acordo com o esperado
             checkParametros(argc, 9);
@@ -171,9 +169,10 @@ int main(int argc, char* argv[]) {
             // RRN do registro a ser alterado
             int argRrn = atoi(argv[2]);
 
-            // Descobre o numero de registros no arquivo de dado
-            int qtdRegistros = numeroRegistros(fileDados, argRrn);
+            // Descobre o numero de registros no arquivo de dados
+            int qtdRegistros = numeroRegistros(fileDados);
 
+            fseek(fileDados, argRrn*TAMANHO_REGISTRO +5, SEEK_SET);
             // Verificacao da existencia do registro no arquivo de dados
             if( (proxChar(fileDados) == '*') || (argRrn < 1) || (argRrn > qtdRegistros) ) {
                 printf("ERRO: Registro inexistente.\n");
@@ -187,13 +186,13 @@ int main(int argc, char* argv[]) {
             byte status = 0;
 
             // Carregamento do arquivo binario para a memoria principal
-            fileDados = fopen("fileOut", "r+");
+            fileDados = fopen("fileOut", "rb+");
             if(fileDados == NULL) {
                 printf("ERRO: Arquivo de dados nao encontrado.");
                 exit(0);
             }
             else {
-                // Caso exista, seta seu status (na cabecalho) como 0
+                // Caso exista, seta seu status (no cabecalho) como 0
                 fseek(fileDados, 0, SEEK_SET);
                 fwrite(&status , 1, 1, fileDados);
             }
@@ -228,16 +227,13 @@ int main(int argc, char* argv[]) {
             // Le os registros do arquivo e armazena-os no vetor de dados. Depois, fecha-o
             leArquivoBin(fileDados, dadosBin);
             fclose(fileDados);
-
-            // Cria um arquivo de dados temporario
-            FILE* tempFile;
             
             /* Cria o buffer de paginas que sera utilizado pelas funcoes que
              * trabalham com o arquivo de indices */
             bufferPaginas = criaBuffer();
 
             // Escreve os dados no novo arquivo
-            escreveArquivo(tempFile, dadosBin, "tempData", fileIndex, bufferPaginas);
+            escreveArquivo(dadosBin, "tempData", bufferPaginas);
 
             // Remove o antigo arquivo de dados
             if (remove("fileOut") == -1 ) {
@@ -297,16 +293,40 @@ int main(int argc, char* argv[]) {
     
         case 12:
 
+            // Checa se o numero de parametros esta de acordo com o esperado
+            checkParametros(argc, 3);
+
+            // Trata o parametro de entrada (de string para inteiro)
+            int chaveBusca = atoi(argv[2]);
+
+            // Abre o arquivo de dados para leitura
+            FILE* I = fopen("fileIndex", "rb");
+
+            /* Cria o buffer de paginas que sera utilizado pelas funcoes que
+             * trabalham com o arquivo de indices */
+            bufferPaginas = criaBuffer();
+
+            // Le o RRN da pagina raiz do cabecalho do arquivo de indices (necessario para inicar a busca)
+            int rrnRaiz = leCabecalhoArquivoIndice(I, "noRaiz");
+
+            // Realiza a busca pelo RRN no arquivo de indices arvore b
+            int rrnArquivoDados = buscaIndice(I, bufferPaginas, rrnRaiz, chaveBusca);
+
+            // Truncamento de dados pois a pesquisa usa string
+            char busca[12];
+            sprintf(busca, "%d", rrnArquivoDados);
+
+            // Realiza busca (e impressao) do registro no arquivo de dados utilizando o RRN
+            buscaRegistro(7, busca);
+
+            // Finalizacao da execucao
+            bufferLogOutput(bufferPaginas);
+            limpaBuffer(bufferPaginas); 
+            fclose(I);
             break;
 
-        case 13:
-
+        default:
             break;
-
-        case 14:
-
-            break;
-
     }
     
     return 0;

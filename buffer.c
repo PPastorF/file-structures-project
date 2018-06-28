@@ -2,7 +2,6 @@
 // Pedro Pastorello Fernandes - NUSP 10262502
 
 #include <stdio.h>
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -50,12 +49,10 @@ void limpaBuffer(buffer* B) {
 /* Funcao que retorna vedadeira se uma pagina de RRN rrnPag esta armazenada
  * no buffer e salva seu indice */
 int paginaEstaNoBuffer(buffer* B, int rrnPag, int* indice) {
-
-	printf("\nRRN buscado: %d\n", rrnPag);
-	printf("RRNs no buffer: ");
+	
 	int i;
+
 	for (i = 0; i < 5; i++) {
-		printf("%d, ", B->paginasArmazenadas[i]);
 		// Caso tenha encontrado
 		if (rrnPag == B->paginasArmazenadas[i]) {			
 			*indice = i;
@@ -68,23 +65,15 @@ int paginaEstaNoBuffer(buffer* B, int rrnPag, int* indice) {
 	return 0;
 }
 
-// Funcao que atualiza a pagina raiz armazenada no buffer
-void novaRaizBuffer(buffer* B, paginaArvore* P, int rrnRaiz) {
-
-	B->paginasArmazenadas[4] = rrnRaiz;
-	B->raiz = *P;
-
-}
-
 // Funcao de insercao no buffer. Caso esteja cheio, remove como uma fila
 void insereBuffer(buffer* B, FILE* I, int rrnPag) {
+	
+	paginaArvore* P = malloc(sizeof(paginaArvore) );
+	int indiceInserido, indiceSeEstiverNoBuffer;
 
-	paginaArvore* P;
-
-	// Encontra a posicao da pagina a ser lida
+	// Le a pagina do arquivo
 	fseek(I, (rrnPag*TAMANHOREGISTROINDICE)+13, SEEK_SET);
 	
-	// Le a pagina do arquivo
 	fread( &(P->nChaves), 4, 1, I);
 	int i;
 	for (i = 0; i < ORDEMARVORE-1; i++) {
@@ -94,9 +83,22 @@ void insereBuffer(buffer* B, FILE* I, int rrnPag) {
 	}
 	fread( &(P->filhas[ORDEMARVORE-1]), 4, 1, I);
 
-	// Insere a pagina P na fila e no vetor de RRNs salvos
-	int indiceInserido = insereFila(B, P);
-	B->paginasArmazenadas[indiceInserido] = rrnPag;
+	// Caso a pagina lida seja a raiz, a insere em sua posicao especial
+	int rrnRaiz = leCabecalhoArquivoIndice(I, "noRaiz");
+	if (rrnPag == rrnRaiz) {
+
+		B->paginasArmazenadas[4] = rrnPag;
+		copiaPagina(&B->raiz, P);
+	}
+	else if ( paginaEstaNoBuffer(B, rrnPag, &indiceSeEstiverNoBuffer) ) {
+		// Caso a pagina lida ja esteja no buffer, apenas a atualiza
+		copiaPagina(&B->fila[indiceSeEstiverNoBuffer], P);
+	}
+	else {
+		// Caso nao esteja, a insere no buffer
+		indiceInserido = insereFila(B, P);
+		B->paginasArmazenadas[indiceInserido] = rrnPag;
+	}
 
 }
 
@@ -110,7 +112,7 @@ int insereFila(buffer* B, paginaArvore* P) {
 
 	// Realiza a insercao
 	B->qtd++;	
-	B->fila[B->ultimo] = *P;
+	copiaPagina(&B->fila[B->ultimo], P);
 	int indiceInserido = B->ultimo;
 
 	// Caso a fila precise 'dar a volta' no vetor
@@ -155,6 +157,6 @@ void bufferLogOutput(buffer* B) {
 	
 	// Escreve as informacoes sobre a execucao do programa
 	fprintf(arq, "Page fault: %d; Page hit: %d.\n", B->pageFault, B->pageHit);
-
+	
 	fclose(arq);
 }

@@ -37,21 +37,20 @@ registro* registroEntrada(char* args[]) {
 	// codEscola
     R->codEscola = atoi(args[2]);
 
-    // Campos de tamanho fixo:
-
-    if(strcmp(args[3], "0") == 0)
+    // Campos de tamanho fixo
+    if (strcmp(args[3], "0") == 0)
         strcpy(R->dataInicio, nada);
     else
         strcpy(R->dataInicio, args[3]);
 
-    if(strcmp(args[4], "0") == 0)
+    if (strcmp(args[4], "0") == 0)
         strcpy(R->dataFinal, nada);
     else
         strcpy(R->dataInicio, args[4]);
 
     // Campos de tamanho variavel: tratamento de seus tamanhos
 
-    if(strlen(args[5]) == 0) {
+    if (strlen(args[5]) == 0) {
         R->endereco.tamanho = 1;
         R->municipio.valor   = malloc(1);
         strcpy(R->nomeEscola.valor, "\0");
@@ -61,7 +60,7 @@ registro* registroEntrada(char* args[]) {
         R->nomeEscola.valor   = malloc(R->nomeEscola.tamanho+1);
         strcpy(R->nomeEscola.valor, args[5]);
     }
-    if(strlen(args[6]) == 0) {
+    if (strlen(args[6]) == 0) {
         R->municipio.tamanho = 1;
         R->municipio.valor   = malloc(1);
         strcpy(R->municipio.valor, "\0");
@@ -72,7 +71,7 @@ registro* registroEntrada(char* args[]) {
         strcpy(R->municipio.valor, args[6]);
     }
     
-    if(strlen(args[7]) == 0) {
+    if (strlen(args[7]) == 0) {
         R->endereco.tamanho = 1;
         R->endereco.valor   = malloc(1);
         strcpy(R->endereco.valor, "\0");
@@ -149,12 +148,12 @@ void printaRegistro(registro* R) {
 	if (R != NULL) {
 		printf("%d ", R->codEscola);
 		printf(" ");                
-		if (R->dataInicio == "0000000000")
+		if ( strcmp(R->dataInicio,"0000000000") == 0 )
 		    printf("           ");
 		else
 		    printf("%s ", R->dataInicio);
 		printf(" ");
-		if (R->dataFinal == "0000000000")
+		if ( strcmp(R->dataFinal,"0000000000") == 0 )
 		    printf("           ");
 		else
 		    printf("%s ", R->dataFinal);
@@ -236,15 +235,12 @@ void leTamanhoVariavelCsv(FILE* F, campoString* C) {
 // Le um campo de tamanho fixo do arquivo .csv
 void leTamanhoFixoCsv(FILE* F, char* C) {
 
-	// Variavel 'lixo', para os caracteres ";"
-	char lixo;
-
 	/* Le uma string de tamanho (tamanho fixo de 10 caracteres)::
 	 * Checa se o campo esta vazio, ou seja, se o proximo caracter eh ';',
 	 * no caso de dataInicio, ou '\n' no caso de dataFinal. Caso seja o ultimo
 	 * registro do arquivo, o proximo char é EOF (fim do arquivo)
 	*/
-	if ( (proxChar(F) == ';') || (proxChar(F) == '\n') || (proxChar(F)) == EOF ) {
+	if ( (proxChar(F) == ';') || (proxChar(F) == '\n') || (proxChar(F) == EOF) ) {
 
 		// Caso esteja vazio, seta a data como 'nula'
 		char nada[11] = {'0','0','0','0','0','0','0','0','0','0','\0'};
@@ -300,8 +296,7 @@ void leArquivoCsv(FILE* F, registroV* R) {
 	R->vet = NULL;
 
 	// Variavel auxiliar
-	registro* registroAux = malloc(sizeof(registro) );
-
+	registro* registroAux = NULL;
 	// Loop de leitura do arquivo F
 	do {
 		// Le um registro do arquivo F
@@ -401,10 +396,10 @@ void escreveRegistro(FILE* F, registro* R) {
 }
 
 // Escreve o arquivo de dados (binario)
-void escreveArquivo(FILE* F, registroV* R, char* nomeArquivo, FILE* I, buffer* B) {
+void escreveArquivo(registroV* R, char* nomeArquivo, buffer* B) {
 
     // Criacao do arquivo de saida
-    F = fopen(nomeArquivo, "wb");
+    FILE* F = fopen(nomeArquivo, "wb");
     if (F == NULL) {
         printf("ERRO: Falha na criacao de arquivo de dados\n");
         exit(0);
@@ -418,7 +413,7 @@ void escreveArquivo(FILE* F, registroV* R, char* nomeArquivo, FILE* I, buffer* B
 	fwrite(&topoPilha, sizeof(int), 1, F);
 
 	// Abre o arquivo de indices
-	I = abreArquivoIndice();
+	FILE* I = abreArquivoIndice();
 
 	// Escreve o corpo do arquivo
 	int i;
@@ -571,19 +566,18 @@ void leArquivoBin(FILE* F, registroV* R) {
 
 // Descobre a quantidade de registros em um arquivo de dados F,
 // Depois, volta para o a posicao do arquivo indicada pelo argumento RRN
-int	numeroRegistros(FILE* F, int RRN) {
+int	numeroRegistros(FILE* F) {
 
 	fseek(F, 0L, SEEK_END);
 	int tamanhoArquivo = ftell(F);
 	int qtdRegistros = ( (tamanhoArquivo-5) / TAMANHO_REGISTRO );
-	fseek(F, ( (RRN)*(TAMANHO_REGISTRO) )+ 5, SEEK_SET );
 
 	return qtdRegistros;
 
 }
 
 // Funcao de busca e impressao de registros
-void buscaRegistro(FILE* fileDados, int op, char* arg) {
+void buscaRegistro(int op, char* arg) {
 
 	/* Passa por todos os registros de um arquivo de dados (acessando-o cada vez) e o printa caso encontre um correspondente a busca 
 	a variavel op indica qual o campo que esta sendo buscado:
@@ -602,7 +596,7 @@ void buscaRegistro(FILE* fileDados, int op, char* arg) {
 	registro* reg = malloc(sizeof(registro) );
 	int i = 0;
 	int qtdEncontrados = 0;
-
+	FILE* fileDados;
 	switch(op) {
 
 		case 0:	// Busca 'nula', printa todos
@@ -896,7 +890,10 @@ void buscaRegistro(FILE* fileDados, int op, char* arg) {
 		    int rrn = atoi(arg);
 
 			// Descobre o numero de registros no arquivo de dados
-		    int qtdRegistros = numeroRegistros(fileDados, rrn);
+		    int qtdRegistros = numeroRegistros(fileDados);
+
+		    // Econtra a posicao para o registro atual
+		    fseek(fileDados, ( (rrn)*TAMANHO_REGISTRO ) +5, SEEK_SET);
 
 			// Verificacao da existencia do registro no arquivo de dados
 			if ( (proxChar(fileDados) == '*') || (rrn < 0) || (rrn > qtdRegistros-1) ) {
@@ -937,12 +934,12 @@ void buscaRegistro(FILE* fileDados, int op, char* arg) {
 }
 
 // Remove um registro do arquivo de dados
-void removeRegistro(FILE* F, char* argRrn) {
+void removeRegistro(char* argRrn) {
 
 	// Abre o arquivo de dados
 	byte status = 0;
 
-    F = fopen("fileOut", "r+");
+    FILE* F = fopen("fileOut", "rb+");
     if (F == NULL) {
     	// Caso o arquivo nao exista
         printf("ERRO: Arquivo de dados nao encontrado.");
@@ -958,7 +955,10 @@ void removeRegistro(FILE* F, char* argRrn) {
 	int rrn = atoi(argRrn);
 
 	// Descobre o numero de registros no arquivo de dado
-	int qtdRegistros = numeroRegistros(F, rrn);
+	int qtdRegistros = numeroRegistros(F);
+
+	// Encontra o byte offset do registro a ser removido
+	fseek(F, ( (rrn)*(TAMANHO_REGISTRO) )+ 5, SEEK_SET);
 
 	// Verificacao da existencia do registro no arquivo de dados
 	if ( (proxChar(F) == '*') || (rrn < 0) || (rrn > qtdRegistros-1) ) {
@@ -989,12 +989,12 @@ void removeRegistro(FILE* F, char* argRrn) {
 
 /* Insere um registro no arquivo de dados, de acordo com o reaproveitamento
  * dinamico de espaco de armazenamento */
-void insercaoDinamica(FILE* F, registro* R, FILE* I, buffer* B) {
+void insercaoDinamica(registro* R, buffer* B) {
 
 	// Abre o arquivo de dados
 	byte status = 0;
 
-    F = fopen("fileOut", "r+");
+    FILE* F = fopen("fileOut", "rb+");
     if (F == NULL) {
     	// Caso o arquivo nao exista
         printf("ERRO: Arquivo de dados nao encontrado.");
@@ -1007,7 +1007,7 @@ void insercaoDinamica(FILE* F, registro* R, FILE* I, buffer* B) {
     }
 
     // Abre o arquivo de indices
-	I = abreArquivoIndice();
+	FILE* I = abreArquivoIndice();
 
     // Le topo da pilha do cabecalho do arquivo de indices
     int topoPilha;
@@ -1019,12 +1019,10 @@ void insercaoDinamica(FILE* F, registro* R, FILE* I, buffer* B) {
 
     // Caso a pilha esteja vazia, escreve o registro no final do arquivo
     if (topoPilha == -1) {
-    	rrn = numeroRegistros(F, 0) - 1;
+    	rrn = numeroRegistros(F) -1;
     	fseek(F, 0, SEEK_END);
     	escreveRegistro(F, R);
 
-	    // Insere a chave correspondente no arquivo de indices
-	    insereChaveIndice(I, B, R->codEscola, rrn);
     }
     else {	// Caso a pilha nao esteja vazia:
    		
@@ -1042,9 +1040,9 @@ void insercaoDinamica(FILE* F, registro* R, FILE* I, buffer* B) {
 		fseek(F, ( (rrn)*TAMANHO_REGISTRO )+5, SEEK_SET);
 		escreveRegistro(F, R);
 
-	    // Insere a chave correspondente no arquivo de indices
-	    insereChaveIndice(I, B, R->codEscola, rrn);
     }
+    // Insere a chave correspondente no arquivo de indices
+    insereChaveIndice(I, B, R->codEscola, rrn);
 
     // Fecha ambos os arquivos
 	fechaArquivo(F);

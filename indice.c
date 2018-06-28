@@ -34,16 +34,16 @@ int getMae(FILE* I, buffer* B, int rrnRaiz, int rrnPag, paginaArvore* P) {
 	/* Caso nao tenha encontrado na pagina atual, analisa pelo primeiro indice da 
 	pagina buscada qual deve ser a proxima pagina a ser buscar */
 
-	int indiceRecursao = posicaoInsercao(I, B, rrnRaiz, P->chaves[0].chave);
+	int indiceRecursao = posicaoInsercao(I, B, P, P->chaves[0].chave);
 
 	return getMae(I, B, raiz->filhas[indiceRecursao], rrnPag, P);
 }
 
 // Funcao de criacao do arquivo de indices. Retorna uma referencia para o mesmo
-void criaArquivoIndice(FILE* I) {
+void criaArquivoIndice(char* nomeArquivo) {
 
 	// Cria o arquivo
-	I = fopen("fileIndex", "wb");
+	FILE* I = fopen(nomeArquivo, "wb");
 	char status = 0;
 	fwrite(&status, 1, 1, I);
 
@@ -98,10 +98,7 @@ void esvaziaPagina(paginaArvore* P) {
 }
 
 // Funcao que retorna a posicao em que deve ser inserida uma chave em uma pagina
-int posicaoInsercao(FILE* I, buffer* B, int rrnPag, int chaveInsert) {
-
-	// Le a pagina a ser trabalhada nesta execucao da funcao
-	paginaArvore* P = lePagina(I, B, rrnPag);
+int posicaoInsercao(FILE* I, buffer* B, paginaArvore* P, int chaveInsert) {
 
 	/*	Caso o laco estoure, a posicao continua valida, pois isso
 		significa que a chave e maior que todos as outras chaves da pagina.
@@ -119,19 +116,17 @@ int posicaoInsercao(FILE* I, buffer* B, int rrnPag, int chaveInsert) {
 		}
 	}
 
-	free(P);
 	return i;
 }
 
 // Funcao que insere uma chave em uma pagina que garantidamente nao esta cheia
 void inserePaginaNaoCheia(FILE* I, buffer* B, int rrnPag, registroIndice insert, int filhaDirInsert) {
 
-
 	// Le a pagina a ser trabalhada nesta execucao da funcao
 	paginaArvore* P = lePagina(I, B, rrnPag);
 
 	// Descobre a posicao da pagina na qual deve ser inserida a chave
-	int posicaoInsere = posicaoInsercao(I, B, rrnPag, insert.chave);
+	int posicaoInsere = posicaoInsercao(I, B, P, insert.chave);
 
 	// Remaneja a filha a direita da ultima posicao
 	P->filhas[P->nChaves+1] = P->filhas[P->nChaves];
@@ -160,9 +155,12 @@ void inserePaginaNaoCheia(FILE* I, buffer* B, int rrnPag, registroIndice insert,
 	P->filhas[posicaoInsere]   = P->filhas[posicaoInsere+1];
 	P->filhas[posicaoInsere+1] = filhaDirInsert;
 
-	// Escreve a pagina P atualizada no arquivo de indices
+	// Escreve a pagina P atualizada no arquivo de indices e a atualiza no buffer
 	fseek(I, (rrnPag*TAMANHOREGISTROINDICE)+13, SEEK_SET);
 	escrevePagina(I, P, rrnPag);
+
+	insereBuffer(B, I, rrnPag);
+	
 	free(P);
 }
 
@@ -188,12 +186,11 @@ void split(FILE* I, buffer* B, int rrnPag, registroIndice insert, int filhaDirIn
 
 	/* Armazena todas as chaves (+ a chave a ser inserida) da pagina em um vetor,
 	 * que estara ordenado: */
+	
 	registroIndice chavesSplit[ORDEMARVORE];
-	// Faz o mesmo com os valores dos RRNs das filhas
 	int filhasSplit[ORDEMARVORE+1];
 
-
-	// Passa todas as chaves e ponteiros da pagina para o vetor
+	// Passa todas as chaves e ponteiros da pagina para seus espectivos vetores
 	int i;
 	for (i = 0; i < ORDEMARVORE-1; i++) {
 		chavesSplit[i] = P->chaves[i];
@@ -202,17 +199,17 @@ void split(FILE* I, buffer* B, int rrnPag, registroIndice insert, int filhaDirIn
 	filhasSplit[ORDEMARVORE-1] = P->filhas[ORDEMARVORE-1];
 
 	// Descobre a posicao no vetor em que deve ficar a nova chave
-	int posicaoInsere = posicaoInsercao(I, B, rrnPag, insert.chave);
+	int posicaoInsere = posicaoInsercao(I, B, P, insert.chave);
 
 	// Insere a chave e seus ponteios no vetor, remanejando as chaves e ponteiros a direita
-	chavesSplit[ORDEMARVORE-1] = chavesSplit[ORDEMARVORE-2];
-	filhasSplit[ORDEMARVORE] = filhasSplit[ORDEMARVORE-1];	
-	for (i = ORDEMARVORE-1; i > posicaoInsere; i--) {
+	for (i = ORDEMARVORE-1; i > posicaoInsere; i--)
 		chavesSplit[i] = chavesSplit[i-1];
+	
+	for (i = ORDEMARVORE; i > posicaoInsere; i--)
 		filhasSplit[i] = filhasSplit[i-1];
-	}
-	chavesSplit[posicaoInsere]   = insert;
+
 	filhasSplit[posicaoInsere]   = filhasSplit[posicaoInsere-1];
+	chavesSplit[posicaoInsere]   = insert;
 	filhasSplit[posicaoInsere+1] = filhaDirInsert;
 
 	// Armazena a chave do meio do vetor, que sera promovida para a pagina mae de P
@@ -229,7 +226,7 @@ void split(FILE* I, buffer* B, int rrnPag, registroIndice insert, int filhaDirIn
 	P->nChaves = meioVetor;
 
 	// Cria uma nova pagina, a direita da pagina P
-	paginaArvore* novaPag = malloc(sizeof( paginaArvore) );
+	paginaArvore* novaPag = malloc(sizeof(paginaArvore) );
 	esvaziaPagina(novaPag);
 
 	// Insere nela as chaves que estao apos o meio do vetor
@@ -237,17 +234,20 @@ void split(FILE* I, buffer* B, int rrnPag, registroIndice insert, int filhaDirIn
 		novaPag->chaves[i-meioVetor-1] = chavesSplit[i];
 		novaPag->filhas[i-meioVetor-1] = filhasSplit[i];
 	}
-	novaPag->filhas[i-meioVetor-1] = filhasSplit[i];
+	novaPag->filhas[4] = filhasSplit[ORDEMARVORE];
 	novaPag->nChaves = meioVetor-1;
 
 	// Descobre o RRN da nova pagina criada
 	int rrnNovaPag = numeroRegistrosIndice(I);
 
-	// Escreve a pagina P atualizada e a nova pagina no arquivo de indices
+	// Escreve a pagina P atualizada e a nova pagina no arquivo de indices e insere seus valores no buffer
 	fseek(I, (rrnPag*TAMANHOREGISTROINDICE)+13, SEEK_SET);
 	escrevePagina(I, P, rrnPag);
+	insereBuffer(B, I, rrnPag);
+
 	fseek(I, 0L, SEEK_END);
 	escrevePagina(I, novaPag, rrnNovaPag);
+	insereBuffer(B, I, rrnNovaPag);
 
 	// Caso a pagina atual seja a pagina raiz, cria a nova pagina raiz da arvore
 	if (rrnPag == leCabecalhoArquivoIndice(I, "noRaiz") ) {
@@ -274,9 +274,7 @@ void split(FILE* I, buffer* B, int rrnPag, registroIndice insert, int filhaDirIn
 		escreveCabecalhoArquivoIndice(I, "noRaiz", rrnNovaRaiz);
 		escreveCabecalhoArquivoIndice(I, "altura", novaAltura);
 
-		// Atualiza o valor da raiz no buffer
-		novaRaizBuffer(B, novaRaiz, rrnNovaRaiz);
-
+		insereBuffer(B, I, rrnNovaRaiz);
 		free(novaRaiz);
 	}
 	else {
@@ -292,13 +290,13 @@ void split(FILE* I, buffer* B, int rrnPag, registroIndice insert, int filhaDirIn
 void insereChavePagina(FILE* I, buffer* B, int rrnPag, registroIndice insert) {
 			
 	// Le a pagina na qual a chave esta sendo inserida para RAM
-	paginaArvore* paginaRam = lePagina(I, B, rrnPag);
+	paginaArvore* P = lePagina(I, B, rrnPag);
 
 	// Caso a pagina seja uma folha:
-	if ( paginaFolha(paginaRam) ) {
+	if ( paginaFolha(P) ) {
 
 		// Caso a pagina esteja cheia, comeca a cadeia de splits
-		if ( paginaCheia(paginaRam) ) {
+		if ( paginaCheia(P) ) {
 		
 			/* 	A funcao de splits 'sobe' a arvore recursivamente, dividindo paginas
 				ate encontrar uma pagina que nao esteja cheia ou ate criar uma nova raiz.
@@ -317,11 +315,11 @@ void insereChavePagina(FILE* I, buffer* B, int rrnPag, registroIndice insert) {
 	}
 	else {
 		// Caso nao seja uma folha, continua a busca pela pagina folha correta para realizar a insercao
-		int rrnFilha = paginaRam->filhas[posicaoInsercao(I, B, rrnPag, insert.chave)];
+		int rrnFilha = P->filhas[posicaoInsercao(I, B, P, insert.chave)];
 		insereChavePagina(I, B, rrnFilha, insert);
 	}
 
-	free(paginaRam);
+	free(P);
 }
 
 // Insere uma chave insert num arquivo de indices P
@@ -333,7 +331,7 @@ void insereChaveIndice(FILE* I, buffer* B, int chave, int rrn) {
 	insert.RRN = rrn;
 
 	int pagRaiz = leCabecalhoArquivoIndice(I, "noRaiz");
-
+	
 	// Caso a pagina a ser inserida seja a primeira
 	if (pagRaiz == -1) {
 
@@ -353,9 +351,9 @@ void insereChaveIndice(FILE* I, buffer* B, int chave, int rrn) {
 		escreveCabecalhoArquivoIndice(I, "noRaiz", 0);
 		escreveCabecalhoArquivoIndice(I, "altura", 0);
 
-		// Atualiza o valor da raiz no buffer
-		novaRaizBuffer(B, primeiraRaiz, 0);
-		
+		// Insere a pagiana no buffer		
+		insereBuffer(B, I, 0);
+
 		free(primeiraRaiz);
 
 	}
@@ -372,7 +370,7 @@ void insereChaveIndice(FILE* I, buffer* B, int chave, int rrn) {
  * retorna -1 */
 int encontraChavePagina(paginaArvore* P, int C) {
 
-	// Percorre todos os indices de 'chaves[]'
+	// Percorre todos os indices de chave da pagina P
 	int i;
 	for (i = 0; i < P->nChaves; i++) {
 		// Retorna o rrn referente a chave, caso encontre
@@ -384,7 +382,7 @@ int encontraChavePagina(paginaArvore* P, int C) {
 	return -1;
 }
 
-// Le um campo do caPalho de um arquivo de indice.
+// Le um campo do caPalho de um arquivo de indice
 int leCabecalhoArquivoIndice(FILE* I, char* campo) {
 
 	int aux;
@@ -433,7 +431,7 @@ void escreveCabecalhoArquivoIndice(FILE* I, char* campo, int arg) {
 // Procedimento de abertura do arquivo de indice para escrita e leitura
 FILE* abreArquivoIndice() {
 
-	FILE* I = fopen("fileIndex", "r+");
+	FILE* I = fopen("fileIndex", "rb+");
 
 	// Tratamento do cabecalho
 	char status = 0;
@@ -459,11 +457,11 @@ void fechaArquivoIndice(FILE* I) {
 paginaArvore* lePagina(FILE* I, buffer* B, int rrn) {
 
 	// Pagina que sera retornada
-	paginaArvore* aux = malloc(sizeof(paginaArvore));
+	paginaArvore* P = malloc(sizeof(paginaArvore));
 
-	/*
 	// Variavel utilizada para resgatar a pagina do buffer
 	int indiceNoBuffer;
+	int i;
 	
 	// Checa se a pagina a ser lida ja esta armazenada no buffer
 	if ( paginaEstaNoBuffer(B, rrn, &indiceNoBuffer) ) {
@@ -475,38 +473,36 @@ paginaArvore* lePagina(FILE* I, buffer* B, int rrn) {
 		// Ele nunca e acessado por operacoes de insercao que nao se referem a raiz.
 		if (indiceNoBuffer == 4) {
 			// Neste caso, le a pagina raiz de sua posicao especial
-			copiaPagina(aux, &(B->raiz) );
+			copiaPagina(P, &(B->raiz) );
 		}
 		else {
 			// Le a pagina do buffer
-			copiaPagina(aux, &(B->fila[indiceNoBuffer]) );
+			copiaPagina(P, &(B->fila[indiceNoBuffer]) );
 		}
 	}
 	else {
 		// Caso nao esteja, a insere no buffer
 		B->pageFault++;
-	*/
 
 		// Encontra a posicao da pagina a ser lida
 		fseek(I, (rrn*TAMANHOREGISTROINDICE)+13, SEEK_SET);
 		
 		// Le a pagina do arquivo
-		fread( &(aux->nChaves), 4, 1, I);
-		int i;
+		fread( &(P->nChaves), 4, 1, I);
 		for (i = 0; i < ORDEMARVORE-1; i++) {
-			fread( &(aux->filhas[i]), 4, 1, I);
-			fread( &(aux->chaves[i].chave), 4, 1, I);
-			fread( &(aux->chaves[i].RRN), 4, 1, I);
+			fread( &(P->filhas[i]), 4, 1, I);
+			fread( &(P->chaves[i].chave), 4, 1, I);
+			fread( &(P->chaves[i].RRN), 4, 1, I);
 		}
-		fread( &(aux->filhas[ORDEMARVORE-1]), 4, 1, I);
+		fread( &(P->filhas[ORDEMARVORE-1]), 4, 1, I);
 
 		// Insere a pagina no buffer
-		//insereBuffer(B, I, rrn);
-	//}
+		insereBuffer(B, I, rrn);
+	}
 
 	/* Retorna a pagina lida, seja ela proveniente do buffer ou lida
 	 * lida do arquivo de indice */
-	return aux;
+	return P;
 }
 
 // Funcao que copia os conteudos da pagina src para a pagina dest
@@ -524,13 +520,38 @@ void copiaPagina(paginaArvore* dest, paginaArvore* src) {
 	dest->filhas[ORDEMARVORE-1] = src->filhas[ORDEMARVORE-1];
 }
 
+// Funcao que identifica se uma pagina P esta cheia
 int paginaCheia(paginaArvore* P) {
 
 	return (P->nChaves == ORDEMARVORE-1);
 }
 
-
+// Funcao que identifica se uma pagina P e uma folha
 int paginaFolha(paginaArvore* P) {
 
 	return (P->filhas[0] == -1);
+}
+
+// Funcao de busca no arquivo de indices arvore B por uma chave
+int buscaIndice(FILE* I, buffer* B, int rrnPag, int chaveBusca) {
+
+	if (rrnPag == -1)
+		return -1;
+
+	// Le a pagina a ser trabalhada nessa execucao da funcao
+	paginaArvore* P = malloc( sizeof(paginaArvore) );
+	P = lePagina(I, B, rrnPag);
+
+	// Tenta encontrar a chave na pagina atual
+	int encontraPagina = encontraChavePagina(P, chaveBusca);
+
+	// Caso seja o valor invalido (-1), continua buscando em uma pagina filha de P 
+	if (encontraPagina == -1) {
+		int filhaBusca = posicaoInsercao(I, B, P, chaveBusca);
+		return buscaIndice(I, B, P->filhas[filhaBusca], chaveBusca );
+	}
+	else {
+		return encontraPagina;
+	}
+
 }

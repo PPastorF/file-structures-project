@@ -62,14 +62,14 @@ void  		leArquivoCsv(FILE*, registroV*);
 registro*	leRegistroBin(FILE*);
 void		printaRegistro(registro*);
 void  		escreveRegistro(FILE*, registro*);
-void  		escreveArquivo(FILE*, registroV*, char*, FILE*, buffer*);
+void  		escreveArquivo(registroV*, char*, buffer*);
 void		leArquivoBin(FILE*, registroV*);
-void		buscaRegistro(FILE*, int, char*);
-void		removeRegistro(FILE*, char*);
-void		insercaoDinamica(FILE*, registro*, FILE*, buffer*);
+void		buscaRegistro(int, char*);
+void		removeRegistro( char*);
+void		insercaoDinamica(registro*, buffer*);
 void		leTamanhoFixoBin(FILE*, char*);
 void		leTamanhoVariavelBin(FILE*, campoString*);
-int			numeroRegistros(FILE*, int);
+int			numeroRegistros(FILE*);
 int			proxChar(FILE*);
 
 #endif
