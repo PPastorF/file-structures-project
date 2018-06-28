@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include "manipulacaoArquivos2.h"
+#include "manipulacaoArquivos.h"
 #include "indice.h"
 
 // Funcao que retorna o RRN da pagina mae de uma pagina de rrn rrnPag
