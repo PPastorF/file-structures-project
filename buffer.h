@@ -35,6 +35,6 @@ int 			encontraChaveBuffer(bufferPaginas*, int);
 void 			insereBuffer(bufferPaginas*, FILE*, int);
 void 			inicializaFila(bufferPaginas*);
 void			insereFila(bufferPaginas*, paginaArvore*); // Funcao de insercao de uma pagina no buffer (retorna 0 caso a insercao ocorre e 1 caso ela falhe)
-paginaArvore*	retiraFila(bufferPaginas*);	// Retira uma pagina do buffer
+paginaArvore*		retiraFila(bufferPaginas*);	// Retira uma pagina do buffer
 void 			appendBufferInfo(int, int);
 #endif
