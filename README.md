@@ -1,2 +1,2 @@
-# trabalho1-arquivos
-Projeto prático 1 da disciplina Oganização de Arquivos
+# file-structures-project
+College assignment on File Structures: file manipulation, records, indexes, B-trees.
